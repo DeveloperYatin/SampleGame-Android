@@ -12,6 +12,8 @@ class MemoryGameViewModel : ViewModel() {
 
     private val _gameState = MutableStateFlow(GameState())
     val gameState: StateFlow<GameState> = _gameState.asStateFlow()
+    
+    private var matchedCardsCount = 0
 
     companion object {
         private const val CARD_PAIRS = 8
@@ -28,6 +30,7 @@ class MemoryGameViewModel : ViewModel() {
         val shuffledCards = pairedCards.shuffled().mapIndexed { index, value ->
             Card(id = index, value = value)
         }
+        matchedCardsCount = 0
         _gameState.value = GameState(cards = shuffledCards, moves = 0, isGameComplete = false, canFlipCard = true)
     }
 
@@ -63,7 +66,6 @@ class MemoryGameViewModel : ViewModel() {
                 if (firstCard.value == clickedCard.value) {
                     // Match found - mark both as matched
                     markCardsAsMatched(firstCard.id, cardId)
-                    checkGameComplete()
                 } else {
                     // No match - flip both back after delay
                     viewModelScope.launch {
@@ -108,14 +110,15 @@ class MemoryGameViewModel : ViewModel() {
                 card
             }
         }
-        _gameState.value = _gameState.value.copy(cards = updatedCards)
-    }
-
-    private fun checkGameComplete() {
-        val allMatched = _gameState.value.cards.all { it.isMatched }
-        if (allMatched) {
-            _gameState.value = _gameState.value.copy(isGameComplete = true)
-        }
+        
+        // Increment matched count by 2 (we just matched a pair)
+        matchedCardsCount += 2
+        val isComplete = matchedCardsCount == updatedCards.size
+        
+        _gameState.value = _gameState.value.copy(
+            cards = updatedCards,
+            isGameComplete = isComplete
+        )
     }
 
     fun resetGame() {
